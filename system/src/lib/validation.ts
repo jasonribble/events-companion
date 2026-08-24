@@ -1,0 +1,67 @@
+import { FieldError } from './errors';
+
+export function validatePlaceOrderRequest(body: Record<string, unknown>): FieldError[] {
+  const errors: FieldError[] = [];
+
+  const sku = body.sku;
+  if (sku === undefined || sku === null || (typeof sku === 'string' && sku.trim() === '')) {
+    errors.push({ field: 'sku', message: 'SKU must not be empty' });
+  }
+
+  const rawQuantity = body.quantity;
+  if (rawQuantity === undefined || rawQuantity === null || (typeof rawQuantity === 'string' && rawQuantity.trim() === '')) {
+    errors.push({ field: 'quantity', message: 'Quantity must not be empty' });
+  } else {
+    const quantity = typeof rawQuantity === 'string' ? Number(rawQuantity) : rawQuantity;
+    if (typeof rawQuantity === 'boolean' || Number.isNaN(quantity) || !Number.isInteger(quantity)) {
+      errors.push({ field: 'quantity', message: 'Quantity must be an integer', code: 'TYPE_MISMATCH' });
+    } else if ((quantity as number) <= 0) {
+      errors.push({ field: 'quantity', message: 'Quantity must be positive' });
+    }
+  }
+
+  const country = body.country;
+  if (country === undefined || country === null || (typeof country === 'string' && country.trim() === '')) {
+    errors.push({ field: 'country', message: 'Country must not be empty' });
+  }
+
+  return errors;
+}
+
+function validateDiscountRate(rawDiscountRate: unknown): FieldError | undefined {
+  if (rawDiscountRate === undefined || rawDiscountRate === null) {
+    return { field: 'discountRate', message: 'Discount rate must not be null' };
+  }
+  const dr = typeof rawDiscountRate === 'string' ? Number(rawDiscountRate) : rawDiscountRate as number;
+  if (Number.isNaN(dr) || dr <= 0) {
+    return { field: 'discountRate', message: 'Discount rate must be greater than 0.00' };
+  }
+  if (dr > 1) {
+    return { field: 'discountRate', message: 'Discount rate must be at most 1.00' };
+  }
+  return undefined;
+}
+
+export function validatePublishCouponRequest(body: Record<string, unknown>): FieldError[] {
+  const errors: FieldError[] = [];
+
+  const code = body.code;
+  if (code === undefined || code === null || (typeof code === 'string' && code.trim() === '')) {
+    errors.push({ field: 'code', message: 'Coupon code must not be blank' });
+  }
+
+  const discountRateError = validateDiscountRate(body.discountRate);
+  if (discountRateError) {
+    errors.push(discountRateError);
+  }
+
+  const rawUsageLimit = body.usageLimit;
+  if (rawUsageLimit !== undefined && rawUsageLimit !== null) {
+    const ul = typeof rawUsageLimit === 'string' ? Number(rawUsageLimit) : rawUsageLimit as number;
+    if (!Number.isNaN(ul) && ul <= 0) {
+      errors.push({ field: 'usageLimit', message: 'Usage limit must be positive' });
+    }
+  }
+
+  return errors;
+}

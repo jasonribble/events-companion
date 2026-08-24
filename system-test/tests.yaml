@@ -1,0 +1,162 @@
+# tests — the suites the pipeline runs against the latest cycle's
+# code. One entry per suite; the user / CI picks via `--suite <id>`.
+#
+# Per-suite fields:
+#   - id, name: how the user / CI selects and labels this run
+#   - command: the language-native test-runner invocation (gradle / dotnet /
+#     npx playwright) that runs the suite
+#   - env (optional): env vars added to the suite's process (CHANNEL,
+#     EXTERNAL_SYSTEM_MODE, etc.) — the runner injects these on top of the
+#     ambient environment
+#   - path: cwd for the test process, relative to this file's directory
+#   - testReportPath: where the language runner drops the HTML report
+#   - sampleTest: the canonical test name passed to `command` when the user
+#     runs with `--sample` — NOT "the test that always runs", just a
+#     known-good example for smoke-checking the pipeline plumbing
+#   - testInstallCommands (optional): one-time install steps that have to
+#     happen inside this suite's cwd before the language runner starts
+#     (e.g. `playwright install`)
+#
+# Top-level `testFilter` carries the `<test>` placeholder the runner
+# substitutes when the user passes `--test <name>`; the substituted string
+# is appended to `command`. A suite that needs a different filter shape
+# overrides it with its own `testFilter:` entry.
+#
+# `suiteGroups` (optional) maps an alias name to a list of suite ids —
+# `gh optivem system-test run --suite <alias>` substitutes the alias with its
+# constituent ids before the runner sees them. Each acceptance channel has TWO
+# concrete partition suites — acceptance-parallel-<ch> (runs in parallel) and
+# acceptance-isolated-<ch> (runs serially) — and a per-channel group alias
+# `acceptance-<ch>` that fans out to both, plus the top-level `acceptance`
+# covering every channel's partitions. Per-project entries here override the
+# Go-side default registry (which provides the same groups); omit the block to
+# fall back to the default. The BPMN runtime emits `--suite=acceptance` from
+# the verify-tests-pass / verify-tests-fail call-activities.
+#
+# `setupCommands` runs once when invoked via `gh optivem system-test setup` —
+# typically the build / dependency install. `test system` does not run it
+# implicitly; chain `test setup` before the first `test system` call.
+#
+# YAML conventions: indent with spaces only (yaml.v3 rejects tabs). Quote
+# strings that could parse as a YAML scalar (`yes`, `no`, country codes).
+
+setupCommands:
+  - name: Install Dependencies
+    command: npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+  - name: Install Playwright Browsers
+    command: npx playwright install chromium
+testFilter: --grep '<test>'
+suiteGroups:
+  acceptance: [acceptance-parallel-api, acceptance-isolated-api, acceptance-parallel-ui, acceptance-isolated-ui]
+  acceptance-api: [acceptance-parallel-api, acceptance-isolated-api]
+  acceptance-ui: [acceptance-parallel-ui, acceptance-isolated-ui]
+suites:
+  - id: smoke-stub
+    name: latest - Smoke (stub)
+    command: npx playwright test --project=smoke-test tests/latest/smoke
+    env:
+      EXTERNAL_SYSTEM_MODE: stub
+    path: .
+    testReportPath: playwright-report/index.html
+    sampleTest: shouldBeAbleToGoToEventsCompanion
+  - id: smoke-real
+    name: latest - Smoke (real)
+    command: npx playwright test --project=smoke-test tests/latest/smoke
+    env:
+      EXTERNAL_SYSTEM_MODE: real
+    path: .
+    testReportPath: playwright-report/index.html
+    sampleTest: shouldBeAbleToGoToEventsCompanion
+  - id: acceptance-parallel-api
+    name: latest - Acceptance Parallel (stub) - API
+    command: npx playwright test --pass-with-no-tests --project=acceptance-test --grep-invert '@isolated' tests/latest/acceptance
+    env:
+      CHANNEL: API
+      EXTERNAL_SYSTEM_MODE: stub
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/parallel-api.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/parallel-api.json
+    sampleTest: shouldBeAbleToBrowseCoupons
+  - id: acceptance-parallel-ui
+    name: latest - Acceptance Parallel (stub) - UI
+    command: npx playwright test --pass-with-no-tests --project=acceptance-test --grep-invert '@isolated' tests/latest/acceptance
+    env:
+      CHANNEL: UI
+      CHANNEL_MODE: static
+      EXTERNAL_SYSTEM_MODE: stub
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/parallel-ui.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/parallel-ui.json
+    sampleTest: shouldBeAbleToBrowseCoupons
+  - id: acceptance-isolated-api
+    name: latest - Acceptance Isolated (stub) - API
+    command: npx playwright test --pass-with-no-tests --project=acceptance-test --workers=1 --grep '@isolated' tests/latest/acceptance
+    env:
+      CHANNEL: API
+      EXTERNAL_SYSTEM_MODE: stub
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/isolated-api.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/isolated-api.json
+    sampleTest: shouldBeAbleToCancelOrder
+  - id: acceptance-isolated-ui
+    name: latest - Acceptance Isolated (stub) - UI
+    command: npx playwright test --pass-with-no-tests --project=acceptance-test --workers=1 --grep '@isolated' tests/latest/acceptance
+    env:
+      CHANNEL: UI
+      CHANNEL_MODE: static
+      EXTERNAL_SYSTEM_MODE: stub
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/isolated-ui.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/isolated-ui.json
+    sampleTest: shouldBeAbleToCancelOrder
+  - id: contract-stub
+    name: latest - Contract (stub)
+    command: npx playwright test --pass-with-no-tests --project=external-system-contract-test --workers=1 --grep-invert '@isolated' 'tests/latest/contract/.*-stub-.*\.spec\.ts'
+    env:
+      EXTERNAL_SYSTEM_MODE: stub
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/results.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/results.json
+    sampleTest: shouldBeAbleToGetTime
+  - id: contract-stub-isolated
+    name: latest - Contract Isolated (stub)
+    command: npx playwright test --pass-with-no-tests --project=external-system-contract-test --workers=1 --grep '@isolated' 'tests/latest/contract/.*-stub-.*\.spec\.ts'
+    env:
+      EXTERNAL_SYSTEM_MODE: stub
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/results.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/results.json
+    sampleTest: shouldBeAbleToGetConfiguredTime
+  - id: contract-real
+    name: latest - Contract (real)
+    command: npx playwright test --pass-with-no-tests --project=external-system-contract-test --workers=1 'tests/latest/contract/.*-real-.*\.spec\.ts'
+    env:
+      EXTERNAL_SYSTEM_MODE: real
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/results.json
+    path: .
+    testReportPath: playwright-report/index.html
+    testCountPath: playwright-report/results.json
+    sampleTest: shouldBeAbleToGetTime
+  - id: e2e-api
+    name: latest - E2E (real) - API
+    command: npx playwright test --project=e2e-test tests/latest/e2e
+    env:
+      CHANNEL: API
+    path: .
+    testReportPath: playwright-report/index.html
+    sampleTest: shouldPlaceOrder
+  - id: e2e-ui
+    name: latest - E2E (real) - UI
+    command: npx playwright test --project=e2e-test tests/latest/e2e
+    env:
+      CHANNEL: UI
+      CHANNEL_MODE: static
+    path: .
+    testReportPath: playwright-report/index.html
+    sampleTest: shouldPlaceOrder

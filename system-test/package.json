@@ -1,0 +1,34 @@
+{
+  "name": "@jasonribble/events-companion-system-test",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "EventsCompanion - System Tests",
+  "scripts": {
+    "test": "playwright test",
+    "test:architecture": "playwright test --project=architecture-test",
+    "test:acceptance": "playwright test --project=acceptance-test",
+    "test:smoke": "playwright test --project=smoke-test",
+    "test:e2e": "playwright test --project=e2e-test",
+    "test:external-contract": "playwright test --project=external-system-contract-test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "keywords": [
+    "atdd",
+    "testing",
+    "e2e",
+    "jasonribble"
+  ],
+  "author": "jasonribble",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "@playwright/test": "^1.41.0",
+    "@types/node": "^20.11.5",
+    "ts-morph": "^28.0.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@optivem/optivem-testing": "1.1.9",
+    "playwright": "^1.55.0"
+  }
+}

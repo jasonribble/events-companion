@@ -1,0 +1,82 @@
+name: qa-signoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version that was tested in QA (e.g., v1.0.0-rc.1). Leave empty to sign off on the latest RC deployed to QA.'
+        required: false
+        type: string
+        default: ''
+      result:
+        description: 'QA testing result'
+        required: true
+        type: choice
+        options:
+          - approved
+          - rejected
+
+permissions: {}
+
+concurrency:
+  group: qa-signoff
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      version: ${{ inputs.version || steps.resolve-latest.outputs.ref }}
+    steps:
+      - name: Resolve Latest QA-Deployed RC
+        id: resolve-latest
+        if: inputs.version == ''
+        uses: optivem/actions/resolve-latest-deployed-prerelease@v1
+        with:
+          environment: qa
+          ref-prefix: v
+
+      - name: Check RC Exists
+        if: inputs.version != ''
+        uses: optivem/actions/validate-tag-exists@v1
+        with:
+          tag: ${{ inputs.version }}
+
+  run:
+    needs: check
+    if: needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    outputs:
+      version: ${{ needs.check.outputs.version }}
+      stage-result: ${{ inputs.result == 'approved' && 'success' || 'failure' }}
+    steps:
+      - name: Record QA Signoff Status
+        uses: optivem/actions/create-commit-status@v1
+        with:
+          ref: ${{ needs.check.outputs.version }}
+          context: qa/signoff
+          state: ${{ inputs.result == 'approved' && 'success' || 'failure' }}
+          description: Manual QA tester ${{ inputs.result }} ${{ needs.check.outputs.version }}
+
+  summary:
+    needs: [check, run]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v6
+
+    - name: Summarize Stage
+      uses: optivem/actions/render-system-stage-summary@v1
+      with:
+        stage-name: 'QA Signoff'
+        stage-result: ${{ needs.run.outputs.stage-result || 'failure' }}
+        environment: qa
+        success-version: ${{ needs.run.outputs.version }}

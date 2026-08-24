@@ -1,0 +1,27 @@
+setupCommands:
+  - name: Install Dependencies
+    command: npm ci
+compileCommands:
+  - name: Typecheck production + test sources
+    command: npx tsc --noEmit
+testFilter: -t '<test>'
+suites:
+  - id: unit
+    name: Unit
+    command: npm test
+    sampleTest: "should be defined"
+  - id: integration
+    name: Narrow Integration
+    command: npm run test:integration
+    sampleTest: "inserts an order and finds it by order number"
+    requiresDocker: true
+  - id: component
+    name: Component
+    pending: true
+  - id: provider-verification
+    name: Provider Verification (Pact)
+    pending: true
+    # Deferred — no in-process consumer; frontend-react only consumes the multitier backends.
+    # Wire once a consumer emits a .pact file targeting this monolith.
+suiteGroups:
+  all: [unit, integration, component, provider-verification]

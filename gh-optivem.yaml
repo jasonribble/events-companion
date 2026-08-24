@@ -1,0 +1,41 @@
+project:
+    provider: github
+    url: https://github.com/users/jasonribble/projects/3
+repo-strategy: mono-repo
+sonar:
+    organization: jasonribble
+system:
+    architecture: monolith
+    config: docker/systems.yaml
+    path: system
+    repo: jasonribble/events-companion
+    lang: typescript
+    sonar-project: jasonribble_events-companion-system
+    db-migration-path: system/db/migrations
+system-test:
+    path: system-test
+    repo: jasonribble/events-companion
+    lang: typescript
+    config: system-test/tests.yaml
+    sonar-project: jasonribble_events-companion-system-test
+    paths:
+        at-test: system-test/tests/latest/acceptance
+        common: system-test/src/testkit/common
+        common-domain: system-test/src/testkit/common/domain
+        ct-test: system-test/tests/latest/contract
+        dsl-core: system-test/src/testkit/dsl/core
+        dsl-port: system-test/src/testkit/dsl/port
+        external-system-driver-adapter: system-test/src/testkit/driver/adapter/external
+        external-system-driver-port: system-test/src/testkit/driver/port/external
+        system-driver-adapter: system-test/src/testkit/driver/adapter
+        system-driver-adapter-shared: system-test/src/testkit/driver/adapter/shared
+        system-driver-port: system-test/src/testkit/driver/port
+    system-driver-adapter-channels:
+        api: system-test/src/testkit/driver/adapter/api
+        ui: system-test/src/testkit/driver/adapter/ui
+system-name: Events Companion
+license: mit
+deploy: docker
+channels:
+    - api
+    - ui

@@ -1,0 +1,60 @@
+// Together with `app-context.ts`, this file fills the role that Java/.NET collapse
+// into a single `ExecutionResultContext`. Here the split is deliberate:
+// `scenario-context.ts` holds Given-stage scenario data (products, coupons, orders, etc.),
+// and `app-context.ts` holds the active channel and driver registry.
+
+import { DEFAULTS } from './defaults.js';
+
+export interface ClockConfig {
+  time: string;
+}
+
+export interface ProductConfig {
+  sku: string;
+  price: string;
+}
+
+export interface PromotionConfig {
+  promotionActive: boolean;
+  discount: string;
+}
+
+export interface CouponConfig {
+  code: string;
+  discountRate: number;
+  validFrom?: string;
+  validTo?: string;
+  usageLimit?: number | string;
+}
+
+export interface CountryConfig {
+  country: string;
+  taxRate: string;
+}
+
+export interface OrderConfig {
+  sku: string;
+  quantity: string;
+  country: string;
+  couponCode: string | null;
+  status: string;
+  orderNumber?: string;
+}
+
+export class ScenarioContext {
+  clockConfig: ClockConfig | null = null;
+  productConfigs: ProductConfig[] = [];
+  couponConfigs: CouponConfig[] = [];
+  countryConfigs: CountryConfig[] = [];
+  orderConfigs: OrderConfig[] = [];
+  hasExplicitProduct = false;
+  promotionConfig: PromotionConfig = { promotionActive: DEFAULTS.PROMOTION_ACTIVE, discount: DEFAULTS.PROMOTION_DISCOUNT };
+  hasExplicitPromotion = false;
+
+  constructor(private readonly onExecuted?: () => void) {}
+
+  /** Signals that the scenario's action has been initiated (called from each When-step's `then()`). */
+  markExecuted(): void {
+    this.onExecuted?.();
+  }
+}

@@ -1,0 +1,73 @@
+name: events-companion-real
+
+services:
+
+  system:
+    build:
+      context: ../system
+      dockerfile: Dockerfile
+    ports:
+      - "3311:8080"
+      - "8311:8080"
+    environment:
+      - POSTGRES_DB_HOST=postgres
+      - POSTGRES_DB_PORT=5432
+      - POSTGRES_DB_NAME=app
+      - POSTGRES_DB_USER=app
+      - POSTGRES_DB_PASSWORD=app
+      - ERP_API_URL=http://external-system-simulators:9000/erp
+      - CLOCK_API_URL=http://external-system-simulators:9000/clock
+      - TAX_API_URL=http://external-system-simulators:9000/tax
+      - EXTERNAL_SYSTEM_MODE=real
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      external-system-simulators:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  db-migrate:
+    image: flyway/flyway:10.21.0-alpine
+    command: -url=jdbc:postgresql://postgres:5432/app -user=app -password=app -locations=filesystem:/migrations migrate
+    environment:
+      FLYWAY_CLEAN_DISABLED: "true"
+    volumes:
+      - ../db/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=app
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  external-system-simulators:
+    build:
+      context: ../external-systems/simulators
+      dockerfile: Dockerfile
+    ports:
+      - "9311:9000"
+    networks:
+      - app-network
+
+volumes:
+  postgres-data:
+
+networks:
+  app-network:
+    driver: bridge

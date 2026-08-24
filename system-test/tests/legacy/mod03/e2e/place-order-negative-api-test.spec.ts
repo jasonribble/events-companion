@@ -1,0 +1,19 @@
+import { apiTest as test, expect } from './base/BaseE2eTest.js';
+
+test('shouldRejectOrderWithNonIntegerQuantity', async ({ config }) => {
+    const eventsCompanionApiUrl = config.eventsCompanion.backendApiUrl;
+
+    // When: place order with invalid quantity via raw HTTP
+    const response = await fetch(`${eventsCompanionApiUrl}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku: 'SOME-SKU', quantity: 'invalid-quantity', country: 'US' }),
+    });
+
+    // Then: should fail with validation error
+    expect(response.ok).toBe(false);
+    const errorData = (await response.json()) as { detail: string; errors?: Array<{ field: string; message: string }> };
+    expect(errorData.detail).toContain('The request contains one or more validation errors');
+    const quantityError = errorData.errors?.find((e) => e.field === 'quantity');
+    expect(quantityError?.message).toBe('Quantity must be an integer');
+});

@@ -1,0 +1,68 @@
+name: cleanup
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # Run daily at midnight CET (23:00 UTC)
+  workflow_dispatch:
+    inputs:
+      keep-count:
+        description: 'Per-environment count cap for cleanup-deployments (newest N kept)'
+        required: false
+        default: '1'
+      retention-days:
+        description: 'Retention window for cleanup-prereleases (tags/releases/Docker tags older than N days)'
+        required: false
+        default: '7'
+      include-production:
+        description: 'Also delete production deployments (overrides default protected-environments)'
+        type: boolean
+        required: false
+        default: false
+      dry-run:
+        description: 'Log what would be deleted without deleting'
+        type: boolean
+        required: false
+        default: false
+
+permissions: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      deployments: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Deployments first: Scenario 1 (released-RC deployments) needs
+      # the RC git tags to resolve SHAs; cleanup-prereleases deletes those.
+      - name: Cleanup Deployments
+        uses: optivem/actions/cleanup-deployments@v1
+        with:
+          keep-count: ${{ inputs.keep-count || '1' }}
+          protected-environments: ${{ inputs.include-production && '' || '*-production,production' }}
+          dry-run: ${{ inputs.dry-run || false }}
+
+      # 7-day retention ensures any flavor RC named in a not-yet-promoted meta-rc
+      # manifest survives long enough to be promoted. Covers long weekends and
+      # queued release runs. See plans/20260514-0652-shop-meta-release-manifest.md.
+      - name: Cleanup Prereleases
+        uses: optivem/actions/cleanup-prereleases@v1
+        with:
+          retention-days: ${{ inputs.retention-days || '7' }}
+          container-packages: shop/monolith-system-java,shop/monolith-system-dotnet,shop/system,shop/multitier-backend-java,shop/multitier-backend-dotnet,shop/multitier-backend-typescript,shop/multitier-frontend-react
+          dry-run: ${{ inputs.dry-run || false }}
+
+      # Run after cleanup-prereleases so newly-orphaned manifests (left behind
+      # when prerelease Docker tags were deleted) are caught in the same pass.
+      - name: Cleanup Orphan Manifests
+        uses: optivem/actions/cleanup-ghcr-orphan-manifests@v1
+        with:
+          retention-days: ${{ inputs.retention-days || '7' }}
+          container-packages: shop/monolith-system-java,shop/monolith-system-dotnet,shop/system,shop/multitier-backend-java,shop/multitier-backend-dotnet,shop/multitier-backend-typescript,shop/multitier-frontend-react
+          dry-run: ${{ inputs.dry-run || false }}

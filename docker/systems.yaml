@@ -1,0 +1,57 @@
+# systems — the SUT stand-ups this language's pipeline knows how to bring up.
+#
+# Each entry pairs:
+#   - composeFile: docker-compose file the runner hands to `docker compose`
+#   - containerName: project name prefix (`-p`); isolates this label's
+#     containers from sibling labels running in parallel
+#   - components: health-check probes the runner waits on after `compose up`
+#   - externalSystems: health-check probes for the vendored simulators / stubs
+#     external systems wired to this label
+#
+# `label: stub` brings up the SUT against WireMock stubs (deterministic
+# responses, for acceptance / contract test isolation). `label: real` swaps
+# those stubs for vendored simulators (mimicking the real third-party APIs
+# at production fidelity).
+#
+# YAML conventions: indent with spaces only — yaml.v3 rejects tabs. Quote
+# any value that could be misread as a YAML scalar (`yes` / `no`, country
+# codes like `NO`); yaml.v3 defaults to YAML 1.2 where the Norway problem
+# is fixed, but quoting is still the safe habit.
+
+systems:
+  - label: stub
+    description: External System Stubs
+    composeFile: docker-compose.local.stub.yml
+    containerName: events-companion-stub
+    components:
+      - name: Monolith
+        url: http://localhost:3312
+        containerName: system
+      - name: Monolith API
+        url: http://localhost:8312/health
+        containerName: system
+    externalSystems:
+      - name: ERP API (Stub)
+        url: http://localhost:9312/erp/health
+        containerName: external-system-stubs
+      - name: Clock API (Stub)
+        url: http://localhost:9312/clock/health
+        containerName: external-system-stubs
+  - label: real
+    description: External System Test Instances
+    composeFile: docker-compose.local.real.yml
+    containerName: events-companion-real
+    components:
+      - name: Monolith
+        url: http://localhost:3311
+        containerName: system
+      - name: Monolith API
+        url: http://localhost:8311/health
+        containerName: system
+    externalSystems:
+      - name: ERP API (Real)
+        url: http://localhost:9311/erp/health
+        containerName: external-system-simulators
+      - name: Clock API (Real)
+        url: http://localhost:9311/clock/health
+        containerName: external-system-simulators

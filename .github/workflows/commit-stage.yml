@@ -1,0 +1,222 @@
+name: commit-stage
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+        - 'system/**'
+        - '!VERSION'
+        - '.github/workflows/commit-stage.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+        - 'system/**'
+        - '!VERSION'
+        - '.github/workflows/commit-stage.yml'
+  workflow_dispatch:
+    inputs:
+      commit-sha:
+        description: 'Git SHA to build (leave empty for HEAD)'
+        required: false
+        type: string
+
+permissions: {}
+
+# Dispatched runs (from the meta prerelease pipeline) build a specific, SHA-pinned
+# commit and must never be evicted by an unrelated push to the same ref — that is
+# what broke run 29336276564. Keying the group on event_name (plus the dispatched
+# SHA) gives pushes and dispatches separate lanes; pushes still supersede each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}-${{ github.event_name }}-${{ inputs.commit-sha || '' }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+env:
+  COMMIT_SHA: ${{ inputs.commit-sha || github.sha }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Ensure Environment Variables Defined
+        uses: optivem/actions/validate-env-vars-defined@v1
+        with:
+          names: |
+            DOCKERHUB_USERNAME
+            DOCKERHUB_TOKEN
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  run:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      GH_OPTIVEM_CONFIG: gh-optivem.yaml
+    outputs:
+      image-digest-url: ${{ steps.digest-url.outputs.digest-url }}
+    steps:
+      # === Checkout Code ===
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+          fetch-depth: 0
+
+      # <> Should Publish Docker Image? <>
+      - name: Check Commit on Main
+        id: check-on-main
+        uses: optivem/actions/check-sha-on-branch@v1
+        with:
+          commit-sha: ${{ env.COMMIT_SHA }}
+
+      # === Compile Code ===
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: 'npm'
+          cache-dependency-path: system/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: system
+
+      - name: Install gh-optivem CLI Extension
+        uses: optivem/actions/install-gh-optivem@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Typecheck production + component-test sources up front (each component's
+      # compileCommands in component-tests.yaml) so a compile error fails fast before the
+      # gating suites.
+      - name: Compile Code
+        run: gh optivem component-test compile
+
+      # === Run Test Pyramid (gates the image) ===
+      # Suites are selected from system/component-tests.yaml via the
+      # gh-optivem CLI, so the suite→command mapping has a single source of truth. They run
+      # in pyramid order ahead of Build/Push, so a red suite blocks the Docker image.
+      # One setup covers every suite (it runs the component's suite-agnostic setupCommands).
+
+      - name: Set Up Component Test Harness
+        run: gh optivem component-test setup
+
+      - name: Run Unit Tests
+        run: gh optivem component-test run --suite unit
+
+      - name: Run Narrow Integration Tests
+        run: gh optivem component-test run --suite integration
+
+      - name: Run Component Tests
+        run: gh optivem component-test run --suite component
+
+      - name: Run Provider Verification (Pact)
+        run: gh optivem component-test run --suite provider-verification
+
+      # === Run Linter ===
+      - name: Run Linter
+        run: npm run lint
+        working-directory: system
+
+      # === Run Static Code Analysis ===
+      - name: Run Code Analysis
+        uses: optivem/actions/retry@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          working-directory: system
+          command: bash ./run-sonar.sh
+
+      # === Build Docker Image ===
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Pre-pull base images
+        uses: optivem/actions/retry@v1
+        with:
+          command: docker pull node:22-alpine
+
+      - name: Read Base Component Version
+        id: read-version
+        uses: optivem/actions/read-base-version@v1
+        with:
+          file: VERSION
+
+      - name: Compose Dev Version
+        if: steps.check-on-main.outputs.on-branch == 'true'
+        id: dev-version
+        uses: optivem/actions/compose-prerelease-version@v1
+        with:
+          base-version: ${{ steps.read-version.outputs.base-version }}
+          suffix: dev
+          build-number: ${{ github.run_number }}
+          prefix: ''
+
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index,manifest
+        with:
+          images: ghcr.io/${{ github.repository }}/system
+          tags: |
+            type=raw,value=sha-${{ env.COMMIT_SHA }}
+            type=raw,value=latest
+            type=raw,value=${{ steps.dev-version.outputs.version }},enable=${{ steps.check-on-main.outputs.on-branch == 'true' }}
+
+      # === Publish Docker Image ===
+      - name: Log in to GHCR
+        if: steps.check-on-main.outputs.on-branch == 'true'
+        uses: optivem/actions/docker-login@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and Push Docker Image
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: system
+          file: system/Dockerfile
+          push: ${{ steps.check-on-main.outputs.on-branch == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Compose Digest URL
+        if: steps.check-on-main.outputs.on-branch == 'true'
+        id: digest-url
+        uses: optivem/actions/compose-digest-url@v1
+        with:
+          base-image-url: ghcr.io/${{ github.repository }}/system
+          digest: ${{ steps.push.outputs.digest }}
+
+  summary:
+    needs: [check, run]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+    - name: Format Artifacts
+      id: format-artifacts
+      uses: optivem/actions/format-artifact-list@v1
+      with:
+        artifacts: ${{ needs.run.outputs.image-digest-url }}
+
+    - name: Summarize Stage
+      uses: optivem/actions/render-stage-summary@v1
+      with:
+        stage-name: 'Commit Stage'
+        stage-result: ${{ needs.run.result }}
+        stage-success-content: |
+          🔗 **Artifacts:**
+          ${{ steps.format-artifacts.outputs.formatted }}
