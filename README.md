@@ -28,4 +28,5 @@ MIT License
 
 ## Contributors
 
-- [jasonribble](https://github.com/jasonribble)
+- [Jason Ribble](https://github.com/jasonribble)
+- [Valentina Jemuović](https://github.com/valentinajemuovic)
