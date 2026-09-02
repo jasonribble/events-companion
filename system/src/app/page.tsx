@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+
+// This is the `Home` component. And a bad comment.
 export default function Home() {
   return (
     <div className="jumbotron bg-light p-5 rounded">
