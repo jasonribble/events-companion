@@ -24,7 +24,7 @@ export default function RootLayout({
         <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
           <div className="container">
             <Link className="navbar-brand" href="/">
-              EventsCompanion
+              Events Companion
             </Link>
           </div>
         </nav>
