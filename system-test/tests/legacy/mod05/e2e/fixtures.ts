@@ -9,8 +9,9 @@ import { EventsCompanionApiDriver } from '../../../../src/testkit/driver/adapter
 import { EventsCompanionUiDriver } from '../../../../src/testkit/driver/adapter/ui/events-companion-ui-driver.js';
 import { ErpRealDriver } from '../../../../src/testkit/driver/adapter/external/erp/erp-real-driver.js';
 import { TaxRealDriver } from '../../../../src/testkit/driver/adapter/external/tax/tax-real-driver.js';
+import { envOrDefault } from '../../../../src/testkit/common/fallback.js';
 
-process.env.EXTERNAL_SYSTEM_MODE = process.env.EXTERNAL_SYSTEM_MODE || 'real';
+process.env.EXTERNAL_SYSTEM_MODE = envOrDefault('EXTERNAL_SYSTEM_MODE', 'real');
 
 const config = loadConfiguration();
 

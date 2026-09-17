@@ -1,5 +1,6 @@
 import { test as base } from '@playwright/test';
-import { ChannelContext, bindChannels, bindTestEach } from '@optivem/optivem-testing';
+import { ChannelContext, bindChannels } from '@optivem/optivem-testing';
+import { bindTestEach } from '../../../../src/testkit/driver/adapter/shared/client/playwright/bindTestEach.js';
 import { chromium } from 'playwright';
 import type { Browser } from 'playwright';
 import { loadConfiguration } from '../../../../config/configuration-loader.js';
@@ -11,8 +12,9 @@ import { EventsCompanionUiDriver } from '../../../../src/testkit/driver/adapter/
 import { ErpRealDriver } from '../../../../src/testkit/driver/adapter/external/erp/erp-real-driver.js';
 import { TaxRealDriver } from '../../../../src/testkit/driver/adapter/external/tax/tax-real-driver.js';
 import { ChannelType } from '../../../../src/testkit/channel/channel-type.js';
+import { envOrDefault, nonEmptyOr } from '../../../../src/testkit/common/fallback.js';
 
-process.env.EXTERNAL_SYSTEM_MODE = process.env.EXTERNAL_SYSTEM_MODE || 'real';
+process.env.EXTERNAL_SYSTEM_MODE = envOrDefault('EXTERNAL_SYSTEM_MODE', 'real');
 
 const config = loadConfiguration();
 
@@ -23,7 +25,7 @@ const _test = base.extend<{ eventsCompanionDriver: EventsCompanionDriver; erpDri
         await browser.close();
     },
     eventsCompanionDriver: async ({ _eventsCompanionBrowser }, use) => {
-        const channel = ChannelContext.get() || ChannelType.API;
+        const channel = nonEmptyOr(ChannelContext.get(), ChannelType.API);
         let driver: EventsCompanionDriver;
         if (channel === ChannelType.UI) {
             driver = new EventsCompanionUiDriver(config.eventsCompanion.frontendUrl, _eventsCompanionBrowser);

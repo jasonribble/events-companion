@@ -6,7 +6,7 @@ import { BaseEventsCompanionUseCase } from './base/BaseEventsCompanionUseCase.js
 import { ViewOrderVerification } from './ViewOrderVerification.js';
 
 export class ViewOrder extends BaseEventsCompanionUseCase<ViewOrderResponse, ViewOrderVerification> {
-  private _orderNumber: string = '';
+  private _orderNumber = '';
 
   constructor(driver: EventsCompanionDriver, context: UseCaseContext) {
     super(driver, context);

@@ -6,7 +6,7 @@ import type { UseCaseContext } from '../../shared/use-case-context.js';
 import { BaseEventsCompanionUseCase } from './base/BaseEventsCompanionUseCase.js';
 
 export class CancelOrder extends BaseEventsCompanionUseCase<CancelOrderResponse, VoidVerification> {
-  private _orderNumberResultAlias: string = '';
+  private _orderNumberResultAlias = '';
 
   constructor(driver: EventsCompanionDriver, context: UseCaseContext) {
     super(driver, context);

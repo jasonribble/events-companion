@@ -1,1 +1,1 @@
-export interface GoToEventsCompanionResponse {}
+export type GoToEventsCompanionResponse = Record<string, never>;

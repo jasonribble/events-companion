@@ -42,7 +42,7 @@ export async function setUpEventsCompanionBrowser(): Promise<EventsCompanionBrow
 
 export async function tearDownEventsCompanionBrowser(eventsCompanionBrowser: EventsCompanionBrowser | null): Promise<void> {
   if (!eventsCompanionBrowser) return;
-  await eventsCompanionBrowser.page.close().catch(() => {});
-  await eventsCompanionBrowser.context.close().catch(() => {});
-  await eventsCompanionBrowser.browser.close().catch(() => {});
+  await eventsCompanionBrowser.page.close();
+  await eventsCompanionBrowser.context.close();
+  await eventsCompanionBrowser.browser.close();
 }

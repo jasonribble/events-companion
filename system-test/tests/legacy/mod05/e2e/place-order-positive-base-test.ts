@@ -1,8 +1,12 @@
 import { expect, type TestType } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { assertThatResult } from '../../../../src/testkit/common/result-assert.js';
+import type { EventsCompanionDriver } from '../../../../src/testkit/driver/port/events-companion-driver.js';
+import type { ErpDriver } from '../../../../src/testkit/driver/port/external/erp/erp-driver.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function runPlaceOrderPositive(test: TestType<any, any>): void {
+export function runPlaceOrderPositive<TTestArgs extends { eventsCompanionDriver: EventsCompanionDriver; erpDriver: ErpDriver }, TWorkerArgs extends object>(
+  test: TestType<TTestArgs, TWorkerArgs>,
+): void {
   test('shouldPlaceOrderForValidInput', async ({ eventsCompanionDriver, erpDriver }) => {
     const sku = `SKU-${randomUUID().substring(0, 8)}`;
 
@@ -12,18 +16,16 @@ export function runPlaceOrderPositive(test: TestType<any, any>): void {
     const result = await eventsCompanionDriver.placeOrder({ sku, quantity: '5', country: 'US' });
 
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.value.orderNumber).toMatch(/^ORD-/);
+    const placedOrder = assertThatResult(result).getValue();
+    expect(placedOrder.orderNumber).toMatch(/^ORD-/);
 
-      const viewResult = await eventsCompanionDriver.viewOrder({ orderNumber: result.value.orderNumber });
-      expect(viewResult.success).toBe(true);
-      if (viewResult.success) {
-        expect(viewResult.value.sku).toBe(sku);
-        expect(viewResult.value.quantity).toBe(5);
-        expect(viewResult.value.unitPrice).toBe(20);
-        expect(viewResult.value.status).toBe('PLACED');
-        expect(viewResult.value.totalPrice).toBeGreaterThan(0);
-      }
-    }
+    const viewResult = await eventsCompanionDriver.viewOrder({ orderNumber: placedOrder.orderNumber });
+    expect(viewResult.success).toBe(true);
+    const order = assertThatResult(viewResult).getValue();
+    expect(order.sku).toBe(sku);
+    expect(order.quantity).toBe(5);
+    expect(order.unitPrice).toBe(20);
+    expect(order.status).toBe('PLACED');
+    expect(order.totalPrice).toBeGreaterThan(0);
   });
 }
