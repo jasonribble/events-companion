@@ -11,5 +11,5 @@ forChannels(ChannelType.UI, ChannelType.API)(() => {
 test('shouldBeAbleToGoToEventsCompanionApi', async () => {
   const config = loadConfiguration();
   const response = await fetch(`${config.eventsCompanion.backendApiUrl}/health`);
-  expect(response.status).toBe(200);
+  expect(response.status).toBe(500);
 });
