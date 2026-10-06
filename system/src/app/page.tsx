@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="jumbotron bg-light p-5 rounded">
-      <h1 className="display-4">Welcome to Events Companion!</h1>
+      <h1 className="display-4">Welcome to EventsCompanion!</h1>
       <p className="lead">Your modern e-commerce solution</p>
       <hr className="my-4" />
       <div className="row mt-4">
