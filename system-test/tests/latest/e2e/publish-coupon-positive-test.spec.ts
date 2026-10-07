@@ -5,7 +5,7 @@ forChannels(ChannelType.UI, ChannelType.API)(() => {
     await scenario
       .when()
       .publishCoupon()
-      .withCouponCode('')
+      .withCouponCode('FALL2026')
       .withDiscountRate(0.15)
       .then()
       .shouldSucceed();
