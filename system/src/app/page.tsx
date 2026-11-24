@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div className="jumbotron bg-light p-5 rounded">
       <h1 className="display-4">Welcome to Events Companion!</h1>
-      <p className="lead">Your modern e-commerce solution</p>
+      <p className="lead">Your modern event management system</p>
       <hr className="my-4" />
       <div className="row mt-4">
         <div className="col-md-4 mb-3">
