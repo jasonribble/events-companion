@@ -35,7 +35,6 @@ system-test:
         ui: system-test/src/testkit/driver/adapter/ui
 system-name: Events Companion
 license: mit
-deploy: docker
 channels:
     - api
     - ui
