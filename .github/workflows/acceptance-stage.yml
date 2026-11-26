@@ -21,7 +21,7 @@ env:
 jobs:
   # === Gate: Artifacts Exist? ===
   preflight:
-    runs-on: ubuntu-latest
+    runs-on: 
     permissions:
       packages: read
     outputs:
@@ -40,7 +40,7 @@ jobs:
   check:
     needs: preflight
     if: needs.preflight.outputs.artifacts-exist == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -139,7 +139,7 @@ jobs:
   run:
     needs: check
     if: needs.check.outputs.should-run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: acceptance
     permissions:
       contents: read
@@ -311,7 +311,7 @@ jobs:
   publish-tag:
     needs: [check, run]
     if: needs.check.outputs.on-main == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -329,7 +329,7 @@ jobs:
   # === Run Static Code Analysis ===
   sonar:
     needs: run
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -357,7 +357,7 @@ jobs:
   summary:
     needs: [preflight, check, run, publish-tag, sonar]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
     steps:
