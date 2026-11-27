@@ -2,7 +2,6 @@
 
 [![commit-stage](https://github.com/jasonribble/events-companion/actions/workflows/commit-stage.yml/badge.svg)](https://github.com/jasonribble/events-companion/actions/workflows/commit-stage.yml)
 [![acceptance-stage](https://github.com/jasonribble/events-companion/actions/workflows/acceptance-stage.yml/badge.svg)](https://github.com/jasonribble/events-companion/actions/workflows/acceptance-stage.yml)
-[![acceptance-stage-legacy](https://github.com/jasonribble/events-companion/actions/workflows/acceptance-stage-legacy.yml/badge.svg)](https://github.com/jasonribble/events-companion/actions/workflows/acceptance-stage-legacy.yml)
 [![qa-stage](https://github.com/jasonribble/events-companion/actions/workflows/qa-stage.yml/badge.svg)](https://github.com/jasonribble/events-companion/actions/workflows/qa-stage.yml)
 [![qa-signoff](https://github.com/jasonribble/events-companion/actions/workflows/qa-signoff.yml/badge.svg)](https://github.com/jasonribble/events-companion/actions/workflows/qa-signoff.yml)
 [![prod-stage](https://github.com/jasonribble/events-companion/actions/workflows/prod-stage.yml/badge.svg)](https://github.com/jasonribble/events-companion/actions/workflows/prod-stage.yml)
